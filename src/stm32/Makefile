@@ -94,12 +94,29 @@ src-$(CONFIG_USBCANBUS) += $(usb-src-y) $(canbus-src-y)
 src-$(CONFIG_USBCANBUS) += stm32/chipid.c generic/usb_canbus.c
 src-$(CONFIG_HAVE_GPIO_HARD_PWM) += stm32/hard_pwm.c
 
+# Rename binary output file rules
+ifeq ($(CONFIG_BOARD_INFO_CONFIGURE),y)
+
+ifneq ($(board_hw_version)$(board_fw_version),)
+rename_bin := $(board_hw_version)-$(board_fw_version).bin
+
+target-y += $(OUT)$(rename_bin)
+
+$(OUT)$(rename_bin):$(OUT)klipper.bin
+	@echo "  Rename hex file"
+	$(Q)cp -v $< $@
+endif
+
+endif
+
 # Binary output file rules
 target-y += $(OUT)klipper.bin
 
-$(OUT)klipper.bin: $(OUT)klipper.elf
+$(OUT)klipper.bin: $(OUT)klipper.elf $(OUT)hostCrc16.elf
 	@echo "  Creating hex file $@"
 	$(Q)$(OBJCOPY) -O binary $< $@
+	$(Q)$(OUT)hostCrc16.elf $@
+	$(Q)srec_cat $@ -binary -offset $(CONFIG_FLASH_APPLICATION_ADDRESS) -o $(OUT)klipper.hex -intel 
 
 # Flash rules
 lib/hidflash/hid-flash:
